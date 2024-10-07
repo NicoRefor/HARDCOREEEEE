@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plataforma - Vue 3</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    #game {
+      width: 100vw;
+      height: 100vh;
+      background-color: skyblue;
+      position: relative;
+      overflow: hidden;
+    }
+    .player {
+      width: 50px;
+      height: 50px;
+      background-color: red;
+      position: absolute;
+      bottom: 50px;
+      left: 50px;
+    }
+    .platform {
+      width: 200px;
+      height: 20px;
+      background-color: green;
+      position: absolute;
+    }
+    .bullet {
+      width: 10px;
+      height: 5px;
+      background-color: yellow;
+      position: absolute;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <div id="game">
+    <div class="player" :style="playerStyle"></div>
+
+    <!-- Plataformas -->
+    <div class="platform" v-for="(platform, index) in platforms" 
+         :style="{ left: `${platform.x}px`, bottom: `${platform.y}px` }"></div>
+    
+    <!-- Projéteis -->
+    <div class="bullet" v-for="(bullet, index) in bullets" 
+         :style="{ left: `${bullet.x}px`, bottom: `${bullet.y}px` }"></div>
+  </div>
+</div>
+
+<!-- Vue.js Script from unpkg -->
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+<script>
+const app = Vue.createApp({
+  data() {
+    return {
+      player: {
+        x: 50,
+        y: 50,
+        width: 50,
+        height: 50,
+        velocityY: 0,
+        isJumping: false
+      },
+      platforms: [
+        { x: 100, y: 100, width: 200, height: 20 },
+        { x: 300, y: 200, width: 200, height: 20 }
+      ],
+      bullets: [],
+      gravity: -0.5,
+      jumpForce: +10,
+      bulletSpeed: 5
+    };
+  },
+  computed: {
+    playerStyle() {
+      return {
+        left: `${this.player.x}px`,
+        bottom: `${this.player.y}px`
+      };
+    }
+  },
+  mounted() {
+    window.addEventListener('keydown', this.handleKeydown);
+    this.gameLoop();
+  },
+  methods: {
+    handleKeydown(event) {
+      if (event.key === 'ArrowRight') {
+        this.player.x += 10;
+      }
+      if (event.key === 'ArrowLeft') {
+        this.player.x -= 10;
+      }
+      if (event.key === 'ArrowUp' && !this.player.isJumping) {
+        this.player.velocityY = this.jumpForce;
+        this.player.isJumping = true;
+      }
+      if (event.key === 'Space') {
+        this.shoot();
+      }
+    },
+    shoot() {
+      // Cria um novo projétil
+      this.bullets.push({
+        x: this.player.x + this.player.width, // Projétil começa na posição do jogador
+        y: this.player.y + this.player.height / 2,
+        width: 10,
+        height: 5
+      });
+    },
+    gameLoop() {
+      setInterval(() => {
+        // Aplicar gravidade
+        this.player.velocityY += this.gravity;
+        this.player.y += this.player.velocityY;
+
+        // Verificar colisões com plataformas
+        let onPlatform = false;
+        this.platforms.forEach(platform => {
+          if (
+            this.player.x + this.player.width > platform.x &&
+            this.player.x < platform.x + platform.width &&
+            this.player.y <= platform.y + platform.height &&
+            this.player.y + this.player.height >= platform.y
+          ) {
+            // Colisão detectada, parar o personagem se estiver caindo
+            if (this.player.velocityY <= 0) { // Só para se estiver caindo
+              this.player.y = platform.y + platform.height;
+              this.player.isJumping = false;
+              this.player.velocityY = 0;
+              onPlatform = true;
+            }
+          }
+        });
+
+        // Checar se o personagem está no chão
+        if (!onPlatform && this.player.y <= 0) {
+          this.player.y = 0;
+          this.player.isJumping = false;
+          this.player.velocityY = 0;
+        }
+ // Se não estiver em uma plataforma, aplicar a gravidade
+ if (!onPlatform) {
+          // Verificar se o jogador atinge o chão (0)
+          if (this.player.y <= 0) {
+            this.player.y = 0;
+            this.player.velocityY = 0; // Parar a velocidade vertical
+            this.player.isJumping = false; // Não está mais pulando
+          }
+        }
+
+        // Atualizar posição dos projéteis
+        this.bullets = this.bullets.map(bullet => {
+          bullet.x += this.bulletSpeed;
+          return bullet;
+        }).filter(bullet => bullet.x < window.innerWidth); // Remover balas que saem da tela
+      }, 1000 / 60); // 60 FPS
+    }
+  }
+});
+
+app.mount('#app');
+</script>
+
+</body>
+</html>
